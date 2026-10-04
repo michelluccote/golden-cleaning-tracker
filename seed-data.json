@@ -1,0 +1,109 @@
+{
+  "_notes": [
+    "This is the exact demo/sample data from prototype.html, cleaned up for use as seed data in the production build.",
+    "Dates in the prototype are generated relative to 'today' (WEEK_DATES[0..6] = Mon..Sun of the current week, with some entries on 'last week' to demo mid-week rate changes). For seeding a real dev/test environment, treat 'day' below as an offset from whatever week you're seeding (0=Monday) and 'week' as 'current' or 'previous'.",
+    "Rate history is modeled as an append-only list of {rate, from} per worker and per client (and optionally per client+service-type), never an overwritten single number — this is a core data-model invariant from the spec, not just a demo quirk.",
+    "Two rows are deliberately seeded with a *second*, later-dated rate so Payroll/Billing have a real example of a week that splits across an old and new rate: Maria Silva's pay rate, and Locale's billing rate."
+  ],
+
+  "jobTypes": [
+    { "name": "Standard Clean", "active": true },
+    { "name": "Deep Clean", "active": true },
+    { "name": "Move-Out", "active": true },
+    { "name": "Touch-Up", "active": true }
+  ],
+
+  "sandraAccount": { "email": "sandra@goldencleaning.com", "pin": "9999" },
+
+  "workers": [
+    {
+      "id": "w1", "name": "Maria Silva", "phone": "(415) 555-0142", "email": "maria.silva@example.com",
+      "pin": "1111", "active": true,
+      "rateHistory": [
+        { "rate": 24, "from": "2000-01-01" },
+        { "rate": 26, "from": "<previous-week Thursday>", "note": "mid-week raise, used to demo split-rate payroll" }
+      ]
+    },
+    { "id": "w2", "name": "Ana Costa", "phone": "(415) 555-0187", "email": "ana.costa@example.com", "pin": "2222", "active": true,
+      "rateHistory": [ { "rate": 20, "from": "2000-01-01" } ] },
+    { "id": "w3", "name": "Julia Santos", "phone": "(415) 555-0119", "email": "", "pin": "3333", "active": true,
+      "rateHistory": [ { "rate": 26, "from": "2000-01-01" } ] },
+    { "id": "w4", "name": "Carla Reyes", "phone": "(415) 555-0164", "email": "carla.reyes@example.com", "pin": "4444", "active": false,
+      "rateHistory": [ { "rate": 19, "from": "2000-01-01" } ] }
+  ],
+
+  "clients": [
+    {
+      "id": "c1", "name": "Locale", "phone": "(415) 555-2001", "address": "88 Bryant St, San Francisco", "active": true,
+      "apartments": [
+        { "id": "a1", "name": "Unit 204", "active": true },
+        { "id": "a2", "name": "Unit 310", "active": true },
+        { "id": "a3", "name": "Unit 512", "active": true }
+      ],
+      "rateHistory": [
+        { "rate": 30, "from": "2000-01-01" },
+        { "rate": 34, "from": "<previous-week Thursday>", "note": "mid-week billing rate increase, used to demo split-rate billing" }
+      ],
+      "typeRates": {}
+    },
+    {
+      "id": "c2", "name": "Springline VIP", "phone": "(415) 555-2044", "address": "510 Folsom St, San Francisco", "active": true,
+      "apartments": [
+        { "id": "a4", "name": "Penthouse A", "active": true },
+        { "id": "a5", "name": "Penthouse B", "active": true }
+      ],
+      "rateHistory": [ { "rate": 30, "from": "2000-01-01" } ],
+      "typeRates": {
+        "Standard Clean": [ { "rate": 32, "from": "2000-01-01" } ],
+        "Deep Clean": [ { "rate": 42, "from": "2000-01-01" } ]
+      },
+      "_note": "Touch-Up isn't overridden, so it falls back to this client's default rate (30) — demonstrates the fallback behavior."
+    },
+    {
+      "id": "c3", "name": "Extras", "phone": "(415) 555-2099", "address": "Various addresses", "active": true,
+      "apartments": [ { "id": "a6", "name": "One-Time Job", "active": true } ],
+      "rateHistory": [ { "rate": 25, "from": "2000-01-01" } ],
+      "typeRates": {}
+    },
+    {
+      "id": "c4", "name": "Harbor Row", "phone": "(415) 555-2255", "address": "12 Harbor Way, San Francisco", "active": false,
+      "apartments": [ { "id": "a7", "name": "Suite 2", "active": false } ],
+      "rateHistory": [ { "rate": 28, "from": "2000-01-01" } ],
+      "typeRates": {}
+    }
+  ],
+
+  "entries": [
+    { "id": "e1", "workerId": "w1", "day": 0, "clientId": "c1", "apartmentId": "a1", "timeIn": "08:00", "timeOut": "10:30", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e2", "workerId": "w1", "day": 0, "clientId": "c1", "apartmentId": "a2", "timeIn": "11:00", "timeOut": "12:30", "jobType": "Touch-Up", "notes": "" },
+    { "id": "e3", "workerId": "w1", "day": 1, "clientId": "c2", "apartmentId": "a4", "timeIn": "09:00", "timeOut": "12:00", "jobType": "Deep Clean", "notes": "New tenant move-in prep" },
+    { "id": "e4", "workerId": "w1", "day": 2, "clientId": "c1", "apartmentId": "a3", "timeIn": "08:30", "timeOut": "10:00", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e5", "workerId": "w1", "day": 4, "clientId": "c3", "apartmentId": "a6", "timeIn": "13:00", "timeOut": "15:00", "jobType": "Move-Out", "notes": "" },
+
+    { "id": "e6", "workerId": "w2", "day": 0, "clientId": "c2", "apartmentId": "a5", "timeIn": "08:00", "timeOut": "11:00", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e7", "workerId": "w2", "day": 1, "clientId": "c1", "apartmentId": "a1", "timeIn": "09:00", "timeOut": "11:30", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e8", "workerId": "w2", "day": 2, "clientId": "c1", "apartmentId": "a2", "timeIn": "08:00", "timeOut": "09:30", "jobType": "Touch-Up", "notes": "" },
+    { "id": "e9", "workerId": "w2", "day": 3, "clientId": "c2", "apartmentId": "a4", "timeIn": "10:00", "timeOut": "13:00", "jobType": "Deep Clean", "notes": "" },
+    { "id": "e10", "workerId": "w2", "day": 4, "clientId": "c1", "apartmentId": "a3", "timeIn": "08:00", "timeOut": "10:00", "jobType": "Standard Clean", "notes": "" },
+
+    { "id": "e11", "workerId": "w3", "day": 1, "clientId": "c1", "apartmentId": "a1", "timeIn": "12:00", "timeOut": "14:00", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e12", "workerId": "w3", "day": 2, "clientId": "c2", "apartmentId": "a5", "timeIn": "09:00", "timeOut": "12:30", "jobType": "Deep Clean", "notes": "" },
+    { "id": "e13", "workerId": "w3", "day": 3, "clientId": "c3", "apartmentId": "a6", "timeIn": "14:00", "timeOut": "16:00", "jobType": "Move-Out", "notes": "Client requested extra oven cleaning" },
+    { "id": "e14", "workerId": "w3", "day": 4, "clientId": "c1", "apartmentId": "a2", "timeIn": "08:00", "timeOut": "10:30", "jobType": "Standard Clean", "notes": "" },
+    { "id": "e15", "workerId": "w3", "day": 5, "clientId": "c2", "apartmentId": "a4", "timeIn": "10:00", "timeOut": "12:00", "jobType": "Touch-Up", "notes": "" }
+  ],
+  "_entriesLegend": "day: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun of the seeded week. hours = (timeOut - timeIn).",
+
+  "dayStatus": {
+    "_format": "key = workerId_day (0-6), value = 'confirmed' | 'reopened'. Any worker/day with entries but no key here defaults to 'logged' (submitted, not yet reviewed).",
+    "w1_0": "confirmed", "w1_1": "confirmed", "w1_4": "confirmed",
+    "w2_0": "confirmed", "w2_1": "reopened", "w2_2": "confirmed", "w2_3": "confirmed",
+    "w3_1": "confirmed", "w3_2": "confirmed", "w3_3": "reopened", "w3_4": "confirmed", "w3_5": "confirmed"
+  },
+
+  "reopenNotes": {
+    "_format": "Same workerId_day keys as above — Sandra's note to the worker explaining why that day was sent back.",
+    "w2_1": "Hours looked off for the Springline job - can you double check the time out and resubmit?",
+    "w3_3": "Looks like the Extras job entry is missing - please add it and re-confirm."
+  }
+}
