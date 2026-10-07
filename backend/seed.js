@@ -68,14 +68,16 @@ GCT.seed = function () {
     }
   });
   db.dayStatus.forEach(function (s) { if (s.worker_id === 'w1' && s.date === d(0, 4)) s.status = 'logged'; });
-  // Client prices by service (manual until Jobber): Locale 34 on all, Springline 32 / 42 for Standard / Deep, Extras 25.
+  // Example client prices by service (manual until Jobber), each between $30 and $50 and varied by service.
   db.clientRates = [
-    { client_id: 'c1', service: 'Standard Clean', rate: 34 }, { client_id: 'c1', service: 'Deep Clean', rate: 34 },
-    { client_id: 'c1', service: 'Move-Out', rate: 34 }, { client_id: 'c1', service: 'Touch-Up', rate: 34 },
-    { client_id: 'c2', service: 'Standard Clean', rate: 32 }, { client_id: 'c2', service: 'Deep Clean', rate: 42 },
-    { client_id: 'c2', service: 'Move-Out', rate: 30 }, { client_id: 'c2', service: 'Touch-Up', rate: 30 },
-    { client_id: 'c3', service: 'Standard Clean', rate: 25 }, { client_id: 'c3', service: 'Deep Clean', rate: 25 },
-    { client_id: 'c3', service: 'Move-Out', rate: 25 }, { client_id: 'c3', service: 'Touch-Up', rate: 25 }
+    { client_id: 'c1', service: 'Standard Clean', rate: 32 }, { client_id: 'c1', service: 'Deep Clean', rate: 42 },
+    { client_id: 'c1', service: 'Move-Out', rate: 45 }, { client_id: 'c1', service: 'Touch-Up', rate: 30 },
+    { client_id: 'c2', service: 'Standard Clean', rate: 38 }, { client_id: 'c2', service: 'Deep Clean', rate: 48 },
+    { client_id: 'c2', service: 'Move-Out', rate: 44 }, { client_id: 'c2', service: 'Touch-Up', rate: 34 },
+    { client_id: 'c3', service: 'Standard Clean', rate: 35 }, { client_id: 'c3', service: 'Deep Clean', rate: 45 },
+    { client_id: 'c3', service: 'Move-Out', rate: 50 }, { client_id: 'c3', service: 'Touch-Up', rate: 32 },
+    { client_id: 'c4', service: 'Standard Clean', rate: 30 }, { client_id: 'c4', service: 'Deep Clean', rate: 40 },
+    { client_id: 'c4', service: 'Move-Out', rate: 42 }, { client_id: 'c4', service: 'Touch-Up', rate: 31 }
   ];
   return db;
 };
