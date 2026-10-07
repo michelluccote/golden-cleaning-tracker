@@ -158,25 +158,49 @@
   }
   function setLayout(phone) { $phone.classList.toggle('phoneview', phone); document.body.classList.toggle('owner-mode', !phone); }
 
-  // ---------- Sandra: Settings (pay rates and services) ----------
+  // ---------- Sandra: Settings (workers, clients, services, account) ----------
   function money(x) { return x == null ? '—' : '$' + x.toFixed(2); }
+  var SETTINGS_TABS = [['workers', 'Workers'], ['clients', 'Clients'], ['services', 'Services'], ['account', 'Account']];
   function settingsContent(d, tab) {
-    var tabs = '<div class="stabs"><button class="stab' + (tab === 'workers' ? ' on' : '') + '" data-st="workers">Workers pay</button>' +
-      '<button class="stab' + (tab === 'services' ? ' on' : '') + '" data-st="services">Services</button></div>';
+    var tabs = '<div class="stabs">' + SETTINGS_TABS.map(function (t) { return '<button class="stab' + (tab === t[0] ? ' on' : '') + '" data-st="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     if (tab === 'services') {
       return tabs + '<form id="addsvc" class="addrow" autocomplete="off"><input name="name" placeholder="New service, e.g. Windows" maxlength="40" required><button class="btn sm">Add service</button></form>' +
         d.services.map(function (x) {
-          return '<div class="srow' + (x.active ? '' : ' off') + '"><div class="sname"><b>' + esc(x.name) + '</b>' + (x.active ? '' : ' <span class="tag">Retired</span>') + '</div>' +
+          return '<div class="scard' + (x.active ? '' : ' off') + '"><div class="sname"><b>' + esc(x.name) + '</b>' + (x.active ? '' : ' <span class="tag">Retired</span>') + '</div>' +
             '<div class="sbtns"><button class="btn cancel sm" data-svc="' + esc(x.name) + '" data-on="' + (x.active ? 0 : 1) + '">' + (x.active ? 'Retire' : 'Restore') + '</button></div></div>';
         }).join('') +
         '<p class="hint2">Services are never deleted or renamed, so past visits keep their meaning. Retired services can\'t be picked for new visits.</p>';
     }
-    return tabs + d.workers.map(function (w) {
-      return '<div class="srow' + (w.active ? '' : ' off') + '"><div class="sname"><b>' + esc(w.name) + '</b>' + (w.active ? '' : ' <span class="tag">Inactive</span>') + '</div>' +
-        '<div class="sval"><b>' + money(w.current) + '/hr</b><small>' + (w.since ? 'since ' + esc(label(w.since)) : 'no rate yet') + '</small></div>' +
-        '<div class="sbtns"><button class="btn secondary sm" data-rate="' + w.id + '">Change rate</button>' +
-        (w.rows.length > 1 ? '<button class="btn cancel sm" data-recs="' + w.id + '">View records</button>' : '') + '</div></div>';
-    }).join('') + '<p class="hint2">A rate change starts on the date you pick. Work done before that date keeps the rate it was earned at.</p>';
+    if (tab === 'clients') {
+      return tabs + '<button class="btn secondary sm wide" data-addclient>+ Add client</button>' + d.clients.map(clientCard).join('') +
+        '<p class="hint2">Prices are typed in by hand here for now. Once Jobber is connected, each visit will use its Jobber price instead.</p>';
+    }
+    if (tab === 'account') {
+      return tabs + '<div class="scard"><div class="sname"><b>Sign-in email</b></div><div class="smeta">Where Sandra\'s PIN is sent if she forgets it.</div>' +
+        '<div class="smeta"><b>' + esc(d.account.email) + '</b></div><div class="sbtns"><button class="btn secondary sm" data-email>Edit email</button></div></div>' +
+        '<div class="scard"><div class="sname"><b>Change PIN</b></div><div class="smeta">Enter the new 5-digit PIN twice, so a typo doesn\'t lock you out. No one else can use it.</div>' +
+        '<div class="sbtns"><button class="btn secondary sm" data-pin>Change PIN</button></div></div>' +
+        '<div class="sbtns"><button class="btn cancel" id="logout">Log out</button></div>';
+    }
+    return tabs + '<button class="btn secondary sm wide" data-addworker>+ Add worker</button>' + d.workers.map(workerCard).join('') +
+      '<p class="hint2">A rate change starts on the date you pick. Work done before that date keeps the rate it was earned at.</p>';
+  }
+  function workerCard(w) {
+    return '<div class="scard' + (w.active ? '' : ' off') + '"><div class="sname"><b>' + esc(w.name) + '</b>' + (w.active ? '' : ' <span class="tag">Inactive</span>') + '</div>' +
+      '<div class="smeta">' + esc(w.phone || 'no phone') + ' · ' + (w.email ? esc(w.email) : '<span class="warn">no email, so they can\'t reset their own PIN</span>') + '</div>' +
+      '<div class="smeta">PIN <b class="mono">' + esc(w.pin) + '</b></div>' +
+      '<div class="sval2"><b>' + money(w.current) + '/hr</b><small>' + (w.since ? 'since ' + esc(label(w.since)) : 'no rate yet') + '</small></div>' +
+      '<div class="sbtns"><button class="btn secondary sm" data-rate="' + w.id + '">Change rate</button>' + (w.rows.length > 1 ? '<button class="btn cancel sm" data-recs="' + w.id + '">View records</button>' : '') +
+      '<button class="btn cancel sm" data-editw="' + w.id + '">Edit</button><button class="btn cancel sm" data-actw="' + w.id + '" data-on="' + (w.active ? 0 : 1) + '">' + (w.active ? 'Deactivate' : 'Reactivate') + '</button></div></div>';
+  }
+  function clientCard(c) {
+    return '<div class="scard' + (c.active ? '' : ' off') + '"><div class="sname"><b>' + esc(c.name) + '</b>' + (c.active ? '' : ' <span class="tag">Inactive</span>') + '</div>' +
+      '<div class="smeta">' + esc(c.address || 'no address') + ' · ' + esc(c.phone || 'no phone') + '</div>' +
+      '<div class="subh">Price by service</div>' +
+      c.rates.map(function (r) { return '<div class="prow"><span>' + esc(r.service) + '</span><span class="mono">' + (r.rate == null ? '—' : money(r.rate)) + '/hr</span><button class="btn cancel sm" data-crate="' + c.id + '" data-svc2="' + esc(r.service) + '">Set</button></div>'; }).join('') +
+      '<div class="subh">Units</div>' +
+      c.apartments.map(function (a) { return '<div class="prow"><span>' + esc(a.name) + (a.active ? '' : ' <span class="tag">Inactive</span>') + '</span><button class="btn cancel sm" data-actapt="' + a.id + '" data-on="' + (a.active ? 0 : 1) + '">' + (a.active ? 'Deactivate' : 'Reactivate') + '</button></div>'; }).join('') +
+      '<div class="sbtns"><button class="btn secondary sm" data-addapt="' + c.id + '">+ Add unit</button><button class="btn cancel sm" data-editc="' + c.id + '">Edit client</button><button class="btn cancel sm" data-actc="' + c.id + '" data-on="' + (c.active ? 0 : 1) + '">' + (c.active ? 'Deactivate' : 'Reactivate') + '</button></div></div>';
   }
   function renderSettings(tab) {
     if (tab) state.settingsTab = tab;
@@ -191,37 +215,94 @@
     } else {
       $app.innerHTML = '<div class="owner-wrap"><aside class="rail"><div class="brand"><div class="logo">GC</div><div><b>Golden Cleaning Tracker</b><small>Sandra</small></div></div>' +
         '<nav>' + railNav('settings') + '</nav><div class="railfoot"><button class="link" id="tophone">Phone view</button><button class="link" id="out">Sign out</button></div></aside>' +
-        '<main class="main" id="ownermain"><div class="mhdr"><div><h1>Settings</h1><p>Pay rates and services</p></div></div>' + body + '</main></div>';
+        '<main class="main" id="ownermain"><div class="mhdr"><div><h1>Settings</h1><p>Workers, clients, services and your account</p></div></div>' + body + '</main></div>';
       document.getElementById('tophone').onclick = function () { setOwnerView('phone'); };
     }
     document.getElementById('out').onclick = signOut;
     bindRail();
+    var logout = document.getElementById('logout'); if (logout) logout.onclick = signOut;
     Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (el) { el.onclick = function () { renderSettings(el.dataset.st); }; });
-    Array.prototype.forEach.call(document.querySelectorAll('[data-rate]'), function (el) {
-      el.onclick = function () {
-        var w = d.workers.filter(function (x) { return x.id === el.dataset.rate; })[0];
-        openRateForm({ title: 'Change rate · ' + w.name, hint: 'Current: ' + money(w.current) + '/hr. The new rate starts on the date you pick.',
-          rate: w.current, date: d.today, ok: 'Save rate',
-          save: function (rate, date) {
-            var c = call('setRate', { worker_id: w.id, rate: rate, effective_from: date }); if (!c.ok) return c.error;
-            toast('Rate saved for ' + w.name.split(' ')[0]); renderSettings(); return '';
-          } });
-      };
-    });
+    var byId = function (list, id) { return list.filter(function (x) { return x.id === id; })[0]; };
+    var done = function (msg) { toast(msg); renderSettings(); return ''; };
+    var act = function (action, args, msg) { return function () { var c = call(action, args); if (!c.ok) return toast(c.error); done(msg); }; };
+
+    // workers
+    var addW = document.querySelector('[data-addworker]');
+    if (addW) addW.onclick = function () { openForm({ title: 'Add worker', hint: 'They sign in with the PIN you set. Use a PIN nobody else has.', ok: 'Add worker', fields: [
+      { name: 'name', label: 'Name', required: true }, { name: 'phone', label: 'Phone', inputmode: 'tel' },
+      { name: 'email', label: 'Email (so they can reset their PIN)', type: 'email' },
+      { name: 'pin', label: 'PIN (5 digits)', inputmode: 'numeric', maxlength: 5, required: true },
+      { name: 'rate', label: 'Starting pay ($ per hour)', inputmode: 'decimal', required: true } ],
+      save: function (v) { var c = call('addWorker', v); if (!c.ok) return c.error; return done('Worker added'); } }); };
+    Array.prototype.forEach.call(document.querySelectorAll('[data-editw]'), function (el) { el.onclick = function () {
+      var w = byId(d.workers, el.dataset.editw);
+      openForm({ title: 'Edit ' + w.name, hint: 'Change the PIN only if the worker needs a new one.', ok: 'Save', fields: [
+        { name: 'name', label: 'Name', value: w.name, required: true }, { name: 'phone', label: 'Phone', value: w.phone, inputmode: 'tel' },
+        { name: 'email', label: 'Email', type: 'email', value: w.email }, { name: 'pin', label: 'PIN (5 digits)', value: w.pin, inputmode: 'numeric', maxlength: 5, required: true } ],
+        save: function (v) { v.worker_id = w.id; var c = call('updateWorker', v); if (!c.ok) return c.error; return done('Saved'); } }); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-actw]'), function (el) { el.onclick = act('setWorkerActive', { worker_id: el.dataset.actw, active: el.dataset.on === '1' }, 'Updated'); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rate]'), function (el) { el.onclick = function () {
+      var w = byId(d.workers, el.dataset.rate);
+      openRateForm({ title: 'Change rate · ' + w.name, hint: 'Current: ' + money(w.current) + '/hr. The new rate starts on the date you pick.', rate: w.current, date: d.today, ok: 'Save rate',
+        save: function (rate, date) { var c = call('setRate', { worker_id: w.id, rate: rate, effective_from: date }); if (!c.ok) return c.error; toast('Rate saved for ' + w.name.split(' ')[0]); renderSettings(); return ''; } }); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-recs]'), function (el) { el.onclick = function () { openRecords(el.dataset.recs); }; });
-    Array.prototype.forEach.call(document.querySelectorAll('[data-svc]'), function (el) {
-      el.onclick = function () {
-        var c = call('setServiceActive', { name: el.dataset.svc, active: el.dataset.on === '1' });
-        if (!c.ok) return toast(c.error);
-        toast(el.dataset.on === '1' ? 'Service restored' : 'Service retired'); renderSettings();
-      };
-    });
+
+    // clients
+    var addC = document.querySelector('[data-addclient]');
+    if (addC) addC.onclick = function () { openForm({ title: 'Add client', ok: 'Add client', fields: [
+      { name: 'name', label: 'Client name', required: true }, { name: 'phone', label: 'Phone', inputmode: 'tel' }, { name: 'address', label: 'Address' } ],
+      save: function (v) { var c = call('addClient', v); if (!c.ok) return c.error; return done('Client added'); } }); };
+    Array.prototype.forEach.call(document.querySelectorAll('[data-editc]'), function (el) { el.onclick = function () {
+      var c = byId(d.clients, el.dataset.editc);
+      openForm({ title: 'Edit ' + c.name, ok: 'Save', fields: [
+        { name: 'name', label: 'Client name', value: c.name, required: true }, { name: 'phone', label: 'Phone', value: c.phone, inputmode: 'tel' }, { name: 'address', label: 'Address', value: c.address } ],
+        save: function (v) { v.client_id = c.id; var r2 = call('updateClient', v); if (!r2.ok) return r2.error; return done('Saved'); } }); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-actc]'), function (el) { el.onclick = act('setClientActive', { client_id: el.dataset.actc, active: el.dataset.on === '1' }, 'Updated'); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-addapt]'), function (el) { el.onclick = function () {
+      openForm({ title: 'Add unit', ok: 'Add unit', fields: [{ name: 'name', label: 'Unit name, e.g. Unit 512', required: true }],
+        save: function (v) { v.client_id = el.dataset.addapt; var c = call('addApartment', v); if (!c.ok) return c.error; return done('Unit added'); } }); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-actapt]'), function (el) { el.onclick = act('setApartmentActive', { apartment_id: el.dataset.actapt, active: el.dataset.on === '1' }, 'Updated'); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-crate]'), function (el) { el.onclick = function () {
+      var c = byId(d.clients, el.dataset.crate), svc = el.dataset.svc2, cur = c.rates.filter(function (x) { return x.service === svc; })[0].rate;
+      openForm({ title: c.name + ' · ' + svc, hint: 'Typed in by hand until Jobber is connected.', ok: 'Save price', fields: [
+        { name: 'rate', label: 'Price ($ per hour)', value: cur == null ? '' : cur, inputmode: 'decimal', required: true } ],
+        save: function (v) { var c2 = call('setClientRate', { client_id: c.id, service: svc, rate: v.rate }); if (!c2.ok) return c2.error; return done('Price saved'); } }); }; });
+
+    // services
     var add = document.getElementById('addsvc');
-    if (add) add.onsubmit = function (e) {
+    if (add) add.onsubmit = function (e) { e.preventDefault(); var c = call('addService', { name: add.name.value }); if (!c.ok) return toast(c.error); done('Service added'); };
+    Array.prototype.forEach.call(document.querySelectorAll('[data-svc]'), function (el) { el.onclick = act('setServiceActive', { name: el.dataset.svc, active: el.dataset.on === '1' }, el.dataset.on === '1' ? 'Service restored' : 'Service retired'); });
+
+    // account
+    var em = document.querySelector('[data-email]');
+    if (em) em.onclick = function () { openForm({ title: 'Sign-in email', hint: 'Sandra\'s PIN reset is sent here.', ok: 'Save email', fields: [{ name: 'email', label: 'Email', type: 'email', value: d.account.email, required: true }],
+      save: function (v) { var c = call('updateOwnerEmail', v); if (!c.ok) return c.error; return done('Email saved'); } }); };
+    var pn = document.querySelector('[data-pin]');
+    if (pn) pn.onclick = function () { openForm({ title: 'Change your PIN', hint: 'Enter the new 5-digit PIN twice.', ok: 'Save new PIN', fields: [
+      { name: 'pin', label: 'New PIN (5 digits)', inputmode: 'numeric', maxlength: 5, required: true, type: 'password' },
+      { name: 'confirm', label: 'Confirm new PIN', inputmode: 'numeric', maxlength: 5, required: true, type: 'password' } ],
+      save: function (v) { var c = call('setOwnerPin', v); if (!c.ok) return c.error; return done('PIN changed'); } }); };
+
+    var sf = document.getElementById('addsvc');
+  }
+  // A simple form popup. save(values) returns an error message, or '' when it worked.
+  function openForm(o) {
+    var bg = document.createElement('div'); bg.className = 'sheet-bg stacked2';
+    bg.innerHTML = '<form class="sheet" role="dialog" aria-label="' + esc(o.title) + '"><h2>' + esc(o.title) + '</h2>' + (o.hint ? '<p class="cbody">' + esc(o.hint) + '</p>' : '') +
+      o.fields.map(function (f) {
+        return '<label class="field"><span>' + esc(f.label) + '</span><input name="' + f.name + '" type="' + (f.type || 'text') + '"' + (f.inputmode ? ' inputmode="' + f.inputmode + '"' : '') +
+          (f.maxlength ? ' maxlength="' + f.maxlength + '"' : '') + (f.required ? ' required' : '') + ' value="' + esc(f.value == null ? '' : f.value) + '" autocomplete="off"></label>';
+      }).join('') + '<p class="err" id="ferr" role="alert"></p><div class="formacts"><button type="button" class="btn cancel" id="fcancel">Cancel</button><button class="btn">' + esc(o.ok) + '</button></div></form>';
+    $phone.appendChild(bg);
+    var f = bg.querySelector('form');
+    bg.querySelector('#fcancel').onclick = function () { bg.remove(); };
+    bg.onclick = function (ev) { if (ev.target === bg) bg.remove(); };
+    f.onsubmit = function (e) {
       e.preventDefault();
-      var c = call('addService', { name: add.name.value });
-      if (!c.ok) return toast(c.error);
-      toast('Service added'); renderSettings();
+      var v = {}; o.fields.forEach(function (x) { v[x.name] = f[x.name].value.trim(); });
+      var err = o.save(v);
+      if (err) { bg.querySelector('#ferr').textContent = err; return; }
+      bg.remove();
     };
   }
   // One dated rate. save(rate, date) returns an error message, or '' when it worked.

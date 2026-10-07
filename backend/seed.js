@@ -68,5 +68,14 @@ GCT.seed = function () {
     }
   });
   db.dayStatus.forEach(function (s) { if (s.worker_id === 'w1' && s.date === d(0, 4)) s.status = 'logged'; });
+  // Client prices by service (manual until Jobber): Locale 34 on all, Springline 32 / 42 for Standard / Deep, Extras 25.
+  db.clientRates = [
+    { client_id: 'c1', service: 'Standard Clean', rate: 34 }, { client_id: 'c1', service: 'Deep Clean', rate: 34 },
+    { client_id: 'c1', service: 'Move-Out', rate: 34 }, { client_id: 'c1', service: 'Touch-Up', rate: 34 },
+    { client_id: 'c2', service: 'Standard Clean', rate: 32 }, { client_id: 'c2', service: 'Deep Clean', rate: 42 },
+    { client_id: 'c2', service: 'Move-Out', rate: 30 }, { client_id: 'c2', service: 'Touch-Up', rate: 30 },
+    { client_id: 'c3', service: 'Standard Clean', rate: 25 }, { client_id: 'c3', service: 'Deep Clean', rate: 25 },
+    { client_id: 'c3', service: 'Move-Out', rate: 25 }, { client_id: 'c3', service: 'Touch-Up', rate: 25 }
+  ];
   return db;
 };

@@ -154,6 +154,22 @@ GCT.createApi = function (store) {
                 why || 'Please check your hours for this day.');
   }
 
+  function validEmail(e) { return e === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+  function nextId(db, table, prefix) {
+    var max = 0; db[table].forEach(function (r) { max = Math.max(max, parseInt(String(r.id).replace(/\D/g, ''), 10) || 0); });
+    return prefix + (max + 1);
+  }
+  function newPin(db, pin, exceptId) {
+    if (!pinOk(pin)) fail('PIN must be exactly 5 digits.');
+    if (pinTaken(db, pin, exceptId)) fail('Someone already uses that PIN. Pick another.');
+    return String(pin);
+  }
+  function clientRate(db, cid, service) {
+    var r = find(db.clientRates || [], function (x) { return x.client_id === cid && x.service === service; });
+    return r ? r.rate : null;
+  }
+  function ownerOf(db) { return find(db.workers, function (x) { return x.role === 'owner'; }); }
+
   var handlers = {
     loginUsers: function (db) {
       return filter(db.workers, function (w) { return w.active; })
@@ -323,8 +339,15 @@ GCT.createApi = function (store) {
         today: t,
         workers: db.workers.filter(function (w) { return w.role === 'cleaner'; }).map(function (w) {
           var rows = ratesFor(db, w.id), cur = rows.filter(function (x) { return x.effective_from <= t; })[0];
-          return { id: w.id, name: w.name, active: w.active, current: cur ? cur.rate : null, since: cur ? cur.effective_from : null, rows: rows };
+          return { id: w.id, name: w.name, phone: w.phone, email: w.email, pin: w.pin, active: w.active,
+                   current: cur ? cur.rate : null, since: cur ? cur.effective_from : null, rows: rows };
         }),
+        clients: db.clients.map(function (c) {
+          return { id: c.id, name: c.name, phone: c.phone, address: c.address, active: c.active,
+            apartments: db.apartments.filter(function (x) { return x.client_id === c.id; }),
+            rates: db.jobTypes.map(function (j) { return { service: j.name, rate: clientRate(db, c.id, j.name) }; }) };
+        }),
+        account: (function () { var o = ownerOf(db); return { name: o.name, email: o.email }; })(),
         services: db.jobTypes.map(function (j) { return { name: j.name, active: j.active }; })
       };
     },
@@ -358,6 +381,95 @@ GCT.createApi = function (store) {
       var j = find(db.jobTypes, function (x) { return x.name === a.name; });
       if (!j) fail('Service not found.');
       j.active = !!a.active;
+      return {};
+    },
+    addWorker: function (db, a, s) {
+      requireOwner(s);
+      var name = String(a.name || '').trim(), email = String(a.email || '').trim();
+      if (!name) fail('Type the worker\'s name.');
+      if (!validEmail(email)) fail('That email doesn\'t look right.');
+      var pin = newPin(db, a.pin, null), rate = rateValue(a.rate);
+      var id = nextId(db, 'workers', 'w');
+      db.workers.push({ id: id, name: name, role: 'cleaner', phone: String(a.phone || '').trim(), email: email, pin: pin, active: true });
+      db.workerRates.push({ worker_id: id, rate: rate, effective_from: D.today() });
+      return {};
+    },
+    updateWorker: function (db, a, s) {
+      requireOwner(s);
+      var w = cleanerOf(db, a), name = String(a.name || '').trim(), email = String(a.email || '').trim();
+      if (!name) fail('Type the worker\'s name.');
+      if (!validEmail(email)) fail('That email doesn\'t look right.');
+      var pin = a.pin === undefined || a.pin === w.pin ? w.pin : newPin(db, a.pin, w.id);
+      w.name = name; w.phone = String(a.phone || '').trim(); w.email = email; w.pin = pin;
+      return {};
+    },
+    setWorkerActive: function (db, a, s) {
+      requireOwner(s);
+      cleanerOf(db, a).active = !!a.active;
+      return {};
+    },
+    addClient: function (db, a, s) {
+      requireOwner(s);
+      var name = String(a.name || '').trim();
+      if (!name) fail('Type the client\'s name.');
+      db.clients.push({ id: nextId(db, 'clients', 'c'), name: name, phone: String(a.phone || '').trim(), address: String(a.address || '').trim(), active: true });
+      return {};
+    },
+    updateClient: function (db, a, s) {
+      requireOwner(s);
+      var c = find(db.clients, function (x) { return x.id === a.client_id; });
+      if (!c) fail('Client not found.');
+      var name = String(a.name || '').trim();
+      if (!name) fail('Type the client\'s name.');
+      c.name = name; c.phone = String(a.phone || '').trim(); c.address = String(a.address || '').trim();
+      return {};
+    },
+    setClientActive: function (db, a, s) {
+      requireOwner(s);
+      var c = find(db.clients, function (x) { return x.id === a.client_id; });
+      if (!c) fail('Client not found.');
+      c.active = !!a.active;
+      return {};
+    },
+    addApartment: function (db, a, s) {
+      requireOwner(s);
+      var c = find(db.clients, function (x) { return x.id === a.client_id; });
+      if (!c) fail('Client not found.');
+      var name = String(a.name || '').trim();
+      if (!name) fail('Type the unit name.');
+      db.apartments.push({ id: nextId(db, 'apartments', 'a'), client_id: c.id, name: name, active: true });
+      return {};
+    },
+    setApartmentActive: function (db, a, s) {
+      requireOwner(s);
+      var x = find(db.apartments, function (u) { return u.id === a.apartment_id; });
+      if (!x) fail('Unit not found.');
+      x.active = !!a.active;
+      return {};
+    },
+    setClientRate: function (db, a, s) { // placeholder until Jobber prices come in
+      requireOwner(s);
+      var c = find(db.clients, function (x) { return x.id === a.client_id; });
+      if (!c) fail('Client not found.');
+      if (!find(db.jobTypes, function (j) { return j.name === a.service; })) fail('Service not found.');
+      var rate = rateValue(a.rate);
+      db.clientRates = db.clientRates || [];
+      var row = find(db.clientRates, function (x) { return x.client_id === c.id && x.service === a.service; });
+      if (row) row.rate = rate; else db.clientRates.push({ client_id: c.id, service: a.service, rate: rate });
+      return {};
+    },
+    updateOwnerEmail: function (db, a, s) {
+      requireOwner(s);
+      var o = ownerOf(db), email = String(a.email || '').trim();
+      if (!email || !validEmail(email)) fail('Type a valid email.');
+      o.email = email;
+      return {};
+    },
+    setOwnerPin: function (db, a, s) {
+      requireOwner(s);
+      var o = ownerOf(db);
+      if (String(a.pin) !== String(a.confirm)) fail('The two PINs don\'t match.');
+      o.pin = newPin(db, a.pin, o.id);
       return {};
     },
     ownerDay: function (db, a, s) {

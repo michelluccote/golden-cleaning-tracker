@@ -326,3 +326,15 @@ body.owner-mode .stage { padding: 0; }
 .addrow input { flex: 1; min-height: 48px; }
 .hint2 { color: var(--muted); font-size: 14px; margin: 10px 2px; }
 .rail nav button { min-height: 44px; }
+
+.scard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.scard.off { opacity: .6; }
+.scard .sbtns { margin-top: 10px; }
+.smeta { color: var(--muted); font-size: 14px; margin-top: 3px; }
+.warn { color: var(--bad); }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.sval2 { margin-top: 8px; } .sval2 b { font-size: 18px; } .sval2 small { color: var(--muted); margin-left: 8px; font-size: 13px; }
+.subh { font-weight: 700; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 4px; }
+.prow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.hint3 { color: var(--muted); font-weight: 500; text-transform: none; }
+.btn.wide { width: 100%; margin-bottom: 10px; }
