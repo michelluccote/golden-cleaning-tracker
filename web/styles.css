@@ -308,3 +308,21 @@ body.owner-mode .stage { padding: 0; }
 /* phone: finger swipe only, no visible scrollbar */
 .ptable { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .ptable::-webkit-scrollbar { display: none; }
+
+/* ---- Sandra: settings ---- */
+.stabs { display: flex; gap: 8px; margin: 6px 0 14px; }
+.stab { flex: 1; min-height: 48px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); font-weight: 700; font-size: 16px; color: var(--ink); cursor: pointer; }
+.stab.on { border-color: var(--brand); color: var(--brand); }
+.srow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+.srow.off { opacity: .6; }
+.sname { flex: 1; min-width: 140px; font-size: 17px; }
+.sname small { color: var(--muted); font-size: 14px; }
+.sval { text-align: right; }
+.sval b { display: block; font-size: 18px; }
+.sval small { color: var(--muted); font-size: 12px; }
+.sbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.sm { min-height: 44px; padding: 8px 14px; font-size: 15px; width: auto; }
+.addrow { display: flex; gap: 8px; margin-bottom: 12px; }
+.addrow input { flex: 1; min-height: 48px; }
+.hint2 { color: var(--muted); font-size: 14px; margin: 10px 2px; }
+.rail nav button { min-height: 44px; }

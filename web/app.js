@@ -141,6 +141,134 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-jump]'), function (el) { el.onclick = function () { openDay(el.dataset.jump); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-wc]'), function (el) { el.onclick = function () { openClientWeek(el.dataset.ws, el.dataset.wc); }; });
   }
+  // ---------- Sandra: navigation shared by every page ----------
+  var OWNER_PAGES = [['Activity', 'activity'], ['Billing', null], ['Payroll', null], ['Profit', null], ['Entries', null], ['Settings', 'settings']];
+  function railNav(active) {
+    return OWNER_PAGES.map(function (n) {
+      var on = n[1] === active, live = !!n[1];
+      return '<button data-page="' + (n[1] || '') + '"' + (on ? ' aria-current="page"' : '') + (live ? '' : ' disabled title="Coming in a later phase"') + '>' + n[0] + '</button>';
+    }).join('');
+  }
+  function phoneTabs(active) { return railNav(active); }
+  function bindRail() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-page]'), function (el) {
+      if (el.disabled) return;
+      el.onclick = function () { if (el.dataset.page === 'settings') renderSettings(); else viewOwner(); };
+    });
+  }
+  function setLayout(phone) { $phone.classList.toggle('phoneview', phone); document.body.classList.toggle('owner-mode', !phone); }
+
+  // ---------- Sandra: Settings (pay rates and services) ----------
+  function money(x) { return x == null ? '—' : '$' + x.toFixed(2); }
+  function settingsContent(d, tab) {
+    var tabs = '<div class="stabs"><button class="stab' + (tab === 'workers' ? ' on' : '') + '" data-st="workers">Workers pay</button>' +
+      '<button class="stab' + (tab === 'services' ? ' on' : '') + '" data-st="services">Services</button></div>';
+    if (tab === 'services') {
+      return tabs + '<form id="addsvc" class="addrow" autocomplete="off"><input name="name" placeholder="New service, e.g. Windows" maxlength="40" required><button class="btn sm">Add service</button></form>' +
+        d.services.map(function (x) {
+          return '<div class="srow' + (x.active ? '' : ' off') + '"><div class="sname"><b>' + esc(x.name) + '</b>' + (x.active ? '' : ' <span class="tag">Retired</span>') + '</div>' +
+            '<div class="sbtns"><button class="btn cancel sm" data-svc="' + esc(x.name) + '" data-on="' + (x.active ? 0 : 1) + '">' + (x.active ? 'Retire' : 'Restore') + '</button></div></div>';
+        }).join('') +
+        '<p class="hint2">Services are never deleted or renamed, so past visits keep their meaning. Retired services can\'t be picked for new visits.</p>';
+    }
+    return tabs + d.workers.map(function (w) {
+      return '<div class="srow' + (w.active ? '' : ' off') + '"><div class="sname"><b>' + esc(w.name) + '</b>' + (w.active ? '' : ' <span class="tag">Inactive</span>') + '</div>' +
+        '<div class="sval"><b>' + money(w.current) + '/hr</b><small>' + (w.since ? 'since ' + esc(label(w.since)) : 'no rate yet') + '</small></div>' +
+        '<div class="sbtns"><button class="btn secondary sm" data-rate="' + w.id + '">Change rate</button>' +
+        (w.rows.length > 1 ? '<button class="btn cancel sm" data-recs="' + w.id + '">View records</button>' : '') + '</div></div>';
+    }).join('') + '<p class="hint2">A rate change starts on the date you pick. Work done before that date keeps the rate it was earned at.</p>';
+  }
+  function renderSettings(tab) {
+    if (tab) state.settingsTab = tab;
+    tab = state.settingsTab || 'workers';
+    var r = call('settings'); if (!r.ok) { if (!expired(r)) toast(r.error); return; }
+    var d = r.data, phone = ownerIsPhone(), body = settingsContent(d, tab);
+    setLayout(phone);
+    if (phone) {
+      $app.innerHTML = '<div class="ophone"><header class="ohdr"><h1>Settings</h1><div class="ohlinks"><button class="link" id="todesk">Desktop view</button><button class="link" id="out">Sign out</button></div></header>' +
+        '<main class="oscroll" id="ownermain">' + body + '</main><nav class="otabs">' + phoneTabs('settings') + '</nav></div>';
+      document.getElementById('todesk').onclick = function () { setOwnerView('desktop'); };
+    } else {
+      $app.innerHTML = '<div class="owner-wrap"><aside class="rail"><div class="brand"><div class="logo">GC</div><div><b>Golden Cleaning Tracker</b><small>Sandra</small></div></div>' +
+        '<nav>' + railNav('settings') + '</nav><div class="railfoot"><button class="link" id="tophone">Phone view</button><button class="link" id="out">Sign out</button></div></aside>' +
+        '<main class="main" id="ownermain"><div class="mhdr"><div><h1>Settings</h1><p>Pay rates and services</p></div></div>' + body + '</main></div>';
+      document.getElementById('tophone').onclick = function () { setOwnerView('phone'); };
+    }
+    document.getElementById('out').onclick = signOut;
+    bindRail();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-st]'), function (el) { el.onclick = function () { renderSettings(el.dataset.st); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-rate]'), function (el) {
+      el.onclick = function () {
+        var w = d.workers.filter(function (x) { return x.id === el.dataset.rate; })[0];
+        openRateForm({ title: 'Change rate · ' + w.name, hint: 'Current: ' + money(w.current) + '/hr. The new rate starts on the date you pick.',
+          rate: w.current, date: d.today, ok: 'Save rate',
+          save: function (rate, date) {
+            var c = call('setRate', { worker_id: w.id, rate: rate, effective_from: date }); if (!c.ok) return c.error;
+            toast('Rate saved for ' + w.name.split(' ')[0]); renderSettings(); return '';
+          } });
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-recs]'), function (el) { el.onclick = function () { openRecords(el.dataset.recs); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-svc]'), function (el) {
+      el.onclick = function () {
+        var c = call('setServiceActive', { name: el.dataset.svc, active: el.dataset.on === '1' });
+        if (!c.ok) return toast(c.error);
+        toast(el.dataset.on === '1' ? 'Service restored' : 'Service retired'); renderSettings();
+      };
+    });
+    var add = document.getElementById('addsvc');
+    if (add) add.onsubmit = function (e) {
+      e.preventDefault();
+      var c = call('addService', { name: add.name.value });
+      if (!c.ok) return toast(c.error);
+      toast('Service added'); renderSettings();
+    };
+  }
+  // One dated rate. save(rate, date) returns an error message, or '' when it worked.
+  function openRateForm(o) {
+    var bg = document.createElement('div'); bg.className = 'sheet-bg stacked2'; bg.id = 'ratebg';
+    bg.innerHTML = '<form class="sheet" role="dialog" aria-label="' + esc(o.title) + '"><h2>' + esc(o.title) + '</h2><p class="cbody">' + esc(o.hint) + '</p>' +
+      '<label class="field"><span>Rate ($ per hour)</span><input name="rate" type="number" inputmode="decimal" step="0.25" min="1" max="500" required value="' + (o.rate == null ? '' : o.rate) + '"></label>' +
+      '<label class="field"><span>Starts on</span><input name="date" type="date" required value="' + esc(o.date) + '"></label>' +
+      '<p class="err" id="rerr" role="alert"></p><div class="formacts"><button type="button" class="btn cancel" id="rcancel">Cancel</button><button class="btn">' + esc(o.ok) + '</button></div></form>';
+    $phone.appendChild(bg);
+    var f = bg.querySelector('form');
+    bg.querySelector('#rcancel').onclick = function () { bg.remove(); };
+    bg.onclick = function (ev) { if (ev.target === bg) bg.remove(); };
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      var err = o.save(Number(f.rate.value), f.date.value);
+      if (err) { bg.querySelector('#rerr').textContent = err; return; }
+      bg.remove();
+    };
+  }
+  // View records: every dated rate for one cleaner. Only a mistake gets corrected here.
+  function openRecords(wid) {
+    var old = document.getElementById('recbg'); if (old) old.remove();
+    var r = call('settings'); if (!r.ok) return toast(r.error);
+    var w = r.data.workers.filter(function (x) { return x.id === wid; })[0], today = r.data.today;
+    var bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'recbg';
+    var current = w.rows.filter(function (x) { return x.effective_from <= today; })[0];
+    bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Rate records"><div class="sheet-hdr"><div><h2>Rate records · ' + esc(w.name) + '</h2><p class="subline">Every rate, with the date it started. Edit only to fix a mistake.</p></div></div>' +
+      w.rows.map(function (x) {
+        return '<div class="srow"><div class="sname"><b>' + money(x.rate) + '/hr</b><small> from ' + esc(label(x.effective_from)) + '</small>' + (x === current ? ' <span class="tag">current</span>' : '') + '</div>' +
+          '<div class="sbtns"><button class="btn secondary sm" data-edit="' + x.effective_from + '">Edit</button></div></div>';
+      }).join('') + '<div class="sheet-actions"><button class="btn cancel" id="rclose">Close</button></div></div>';
+    $phone.appendChild(bg);
+    bg.querySelector('#rclose').onclick = function () { bg.remove(); };
+    bg.onclick = function (ev) { if (ev.target === bg) bg.remove(); };
+    Array.prototype.forEach.call(bg.querySelectorAll('[data-edit]'), function (el) {
+      el.onclick = function () {
+        var row = w.rows.filter(function (x) { return x.effective_from === el.dataset.edit; })[0];
+        openRateForm({ title: 'Correct a rate record', hint: 'Use this only to fix a wrong rate or start date.', rate: row.rate, date: row.effective_from, ok: 'Save correction',
+          save: function (rate, date) {
+            var c = call('correctRate', { worker_id: wid, from: row.effective_from, rate: rate, effective_from: date }); if (!c.ok) return c.error;
+            toast('Record corrected'); renderSettings(); openRecords(wid); return '';
+          } });
+      };
+    });
+  }
+
   // ---------- Sandra: weekly activity ----------
   function gridWeek(w) {
     var head = '<tr><th class="gname">Cleaner</th><th class="gtot">Total<small>confirmed</small></th>' +
@@ -179,15 +307,14 @@
     $phone.classList.remove('phoneview'); document.body.classList.add('owner-mode'); // full-width desktop layout
     var prev = document.getElementById('ownermain'), keep = prev ? prev.scrollTop : 0;
     var r = call('activity'); if (!r.ok) { if (!expired(r)) toast(r.error); return; }
-    var nav = [['Activity', 1], ['Billing'], ['Payroll'], ['Profit'], ['Entries'], ['Settings']].map(function (n) {
-      return '<button' + (n[1] ? ' aria-current="page"' : ' disabled title="Coming in a later phase"') + '>' + n[0] + '</button>';
-    }).join('');
+    var nav = railNav('activity');
     var legend = '<div class="legend"><span class="pill none">No data</span><span class="pill logged">Not confirmed</span><span class="pill confirmed">Confirmed</span><span class="pill reopened">Reopened</span></div>';
     $app.innerHTML = '<div class="owner-wrap"><aside class="rail"><div class="brand"><div class="logo">GC</div><div><b>Golden Cleaning Tracker</b><small>Sandra</small></div></div>' +
       '<nav>' + nav + '</nav><div class="railfoot"><button class="link" id="tophone">Phone view</button><button class="link" id="out">Sign out</button></div></aside>' +
       '<main class="main" id="ownermain"><div class="mhdr"><div><h1>Weekly activity</h1><p>Click a cell to see that day</p></div></div>' + legend + r.data.map(gridWeek).join('') + '</main></div>';
     document.getElementById('out').onclick = signOut;
     document.getElementById('tophone').onclick = function () { setOwnerView('phone'); };
+    bindRail();
     Array.prototype.forEach.call(document.querySelectorAll('[data-ow]'), function (el) { el.onclick = function () { openOwnerDay(el.dataset.ow, el.dataset.od); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-wt]'), function (el) { el.onclick = function () { openWorkerWeek(el.dataset.wt, el.dataset.ws); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-wa]'), function (el) { el.onclick = function () { openWeekAll(el.dataset.wa, el.dataset.wd); }; });
@@ -303,14 +430,13 @@
       return '<section class="pweek"><div class="pbar" style="background:' + wkColor(w.num) + '">Week ' + w.num + '</div><div class="ptable"><table class="ptab"><thead><tr><th class="pday">Day</th>' + names + '</tr></thead><tbody>' + tot + days + '</tbody></table>' +
         '<button class="pallbtn" data-wa="' + w.start + '" data-wd="">All cleaners, every visit ›</button></div></section>';
     }).join('');
-    var tabs = [['Activity', 1], ['Billing'], ['Payroll'], ['Profit'], ['Entries'], ['Settings']].map(function (n) {
-      return '<button' + (n[1] ? ' aria-current="page"' : ' disabled title="Coming in a later phase"') + '>' + n[0] + '</button>';
-    }).join('');
+    var tabs = phoneTabs('activity');
     $app.innerHTML = '<div class="ophone"><header class="ohdr"><h1>Sandra\'s Dashboard</h1><div class="ohlinks"><button class="link" id="todesk">Desktop view</button><button class="link" id="out">Sign out</button></div></header>' +
       '<main class="oscroll" id="ownermain"><div class="pstick"><h2 class="ptitle">Weekly activity</h2>' + legend + '</div>' + weeks + '</main>' +
       '<nav class="otabs">' + tabs + '</nav></div>';
     document.getElementById('out').onclick = signOut;
     document.getElementById('todesk').onclick = function () { setOwnerView('desktop'); };
+    bindRail();
     Array.prototype.forEach.call(document.querySelectorAll('[data-ow]'), function (el) { el.onclick = function () { openOwnerDay(el.dataset.ow, el.dataset.od); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-wt]'), function (el) { el.onclick = function () { openWorkerWeek(el.dataset.wt, el.dataset.ws); }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-wa]'), function (el) { el.onclick = function () { openWeekAll(el.dataset.wa, el.dataset.wd || null); }; });
