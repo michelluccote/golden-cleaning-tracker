@@ -14,19 +14,19 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; }
 h1, h2 { font-family: Georgia, "Times New Roman", serif; margin: 0; }
 button, input, select, textarea { font: inherit; color: inherit; }
+button, .cell, .gtotbtn, .day, .fieldrow, .opt { touch-action: manipulation; } /* stops iOS reading two quick taps (e.g. the PIN pad) as "double-tap to zoom" */
 .stage { min-height: 100%; display: grid; place-items: center; }
-.phone { position: relative; width: 100%; height: 100dvh; overflow: hidden; background: var(--bg); }
+.phone { position: relative; width: 100%; height: 100svh; overflow: hidden; background: var(--bg); } /* svh: sized for when the phone browser's own toolbar is showing, so our tab bar never ends up under it */
 #app { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 @media (min-width: 600px) {
   body { background: #e4e0d6; }
   .stage { padding: 24px; }
   .phone { width: 390px; height: min(844px, calc(100dvh - 48px)); border: 10px solid #1b1f20; border-radius: 48px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
   .phone::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 110px; height: 22px; background: #1b1f20; border-radius: 0 0 16px 16px; z-index: 20; }
-  .hdr { padding-top: 30px; }
 }
 .screen { min-height: 100%; display: flex; flex-direction: column; padding: 0 16px; }
 .scroll { flex: 1; padding-bottom: 96px; }
-.hdr { padding: 20px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.hdr { padding: calc(26px + env(safe-area-inset-top)) 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; } /* clears a real phone's notch/status bar, and the drawn notch in the desktop frame */
 .hdr h1 { font-size: 22px; } .hdr p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 .hdr .grow { flex: 1; }
 .link { background: none; border: 0; color: var(--brand); padding: 8px 4px; cursor: pointer; font-weight: 600; }
@@ -172,7 +172,7 @@ textarea { font-size: 16px; }
 .rowline .abtn { flex: none; min-width: 110px; }
 
 /* ---- Sandra: desktop dashboard (full width, no phone frame) ---- */
-.phone.owner:not(.phoneview) { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+.phone.owner:not(.phoneview) { width: 100%; height: 100svh; border: 0; border-radius: 0; box-shadow: none; }
 .phone.owner:not(.phoneview)::before { display: none; }
 body.owner-mode { background: var(--bg); }
 body.owner-mode .stage { padding: 0; }
@@ -285,8 +285,8 @@ body.owner-mode .stage { padding: 0; }
 .otabs button { white-space: nowrap; }
 
 .dots i { width: 18px; height: 18px; }
-/* phone view inside the desktop phone frame: clear the notch, keep everything on one line */
-.phone.phoneview .ohdr { padding: 34px 12px 10px; }
+/* phone view: clear a real phone's notch/status bar (and the drawn notch in the desktop frame), keep everything on one line */
+.phone.phoneview .ohdr { padding: calc(22px + env(safe-area-inset-top)) 12px 10px; }
 .phone.phoneview .ohdr h1 { font-size: 16px; }
 .phone.phoneview .ohlinks .link { font-size: 14px; padding: 6px 4px; }
 .phone.phoneview .otabs button { font-size: 10px; padding: 10px 0 12px; }
